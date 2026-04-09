@@ -5,7 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.0.2] — 2026-04-10
+## [1.0.7] — 2026-04-10
+
+### Added
+- `OutlineWelcomeWindow` — auto-opens on first import, shows quick-start guide, links to docs and GitHub
+- `OutlineDocumentationWindow` — full in-editor documentation browser with tabs: How To Use, Setup Guide, API Reference, Troubleshooting
+- `OutlineValidator` — standalone validation utility callable from Welcome Window, Docs Window, and Tools menu
+
+### Removed
+- `OutlinePackageExporter` — removed export script (package distributed via GitHub releases and Git URL only)
+
+### Changed
+- All Tools menu items consolidated: Welcome, Documentation, Validate Setup
+- Documentation~/README.md fully rewritten with feature table, Unity 6 note, runtime usage examples
+
+---
+
+
 
 ### Fixed
 - Migrated `OutlineRenderPass`, `ScreenSpaceOutlinePass`, `Outline2DPass` to Unity 6 / URP 17 **RenderGraph API** (`RecordRenderGraph` + `AddUnsafePass`) — resolves `CommandBufferPool` not found and `cameraColorTarget` obsolete errors

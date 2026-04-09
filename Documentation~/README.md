@@ -1,27 +1,36 @@
 # Advanced Outline System (URP)
 
-A high-performance, zero-allocation outline rendering system for Unity's Universal Render Pipeline.
+High-performance 2D/3D outline rendering system for Unity's Universal Render Pipeline.
+
+**Author:** Mostafa Mahmoud Abdelrahman © 2026  
+**Portfolio:** https://mostafamahmoudabdelrahman.github.io/mostafa-mahmoud-portfolio/
 
 ---
 
 ## Features
 
-- **3D Outline** — Inverted-hull technique. Expands vertices along normals, renders back-faces only. Works on `MeshRenderer` and `SkinnedMeshRenderer`.
-- **Screen-Space Outline** — Full-screen depth + normal edge detection using the Roberts cross operator.
-- **2D Outline** — Alpha-based edge detection for `SpriteRenderer`.
-- **Zero per-frame allocations** — All property overrides use `MaterialPropertyBlock`. No material duplication.
-- **Per-object control** — Color, thickness, and enable/disable independently per object.
-- **Custom Inspector** — Sliders, color picker, mode selector, and contextual help per mode.
-- **URP only** — No HDRP, no Built-in pipeline dependencies.
+| Feature | Description |
+|---------|-------------|
+| 3D Outline | Inverted-hull — expands vertices along normals, renders back-faces only |
+| Screen-Space Outline | Full-screen depth + normal edge detection (Roberts cross) |
+| 2D Outline | Alpha-based edge detection for SpriteRenderer |
+| Zero allocations | MaterialPropertyBlock — no material duplication per frame |
+| Per-object control | Color, thickness, enable/disable, mode — all per object |
+| Custom Inspector | Sliders, color picker, mode selector with contextual help |
+| Welcome Window | Auto-opens on import with quick-start guide |
+| In-editor Docs | Full documentation browser inside Unity |
 
 ---
 
 ## Requirements
 
-| Requirement | Minimum Version |
-|-------------|----------------|
+| Requirement | Minimum |
+|-------------|---------|
 | Unity | 2021.3 LTS |
 | Universal Render Pipeline | 12.0.0 |
+
+> **Unity 6 users:** Enable Compatibility Mode  
+> Project Settings → Graphics → Render Graph → Compatibility Mode (Render Graph Disabled)
 
 ---
 
@@ -33,92 +42,70 @@ A high-performance, zero-allocation outline rendering system for Unity's Univers
 2. Click **+** → **Add package from git URL**
 3. Enter:
    ```
-   https://github.com/MostafaMahmoudAbdelrahman/AdvancedOutlineSystem.git
+   https://github.com/MostafaMahmoudAbdelrahman/AdvancedOutlineSystem.git#v1.0.7
    ```
 4. Click **Add**
 
-### Via .unitypackage
-
-1. Download `AdvancedOutlineSystem.unitypackage`
-2. In Unity: **Assets → Import Package → Custom Package**
-3. Select the file and click **Import All**
+A Welcome Window opens automatically after import.
 
 ---
 
-## URP Setup
+## Quick Setup
 
 ### 1. Add the Renderer Feature
 
-1. Locate your **URP Renderer** asset (e.g. `Assets/Settings/UniversalRenderer.asset`)
-2. Select it in the Inspector
-3. Click **Add Renderer Feature** at the bottom
-4. Choose **Outline Render Feature**
+1. Select `Assets/Settings/UniversalRenderer.asset`
+2. Inspector → **Add Renderer Feature** → **Outline Render Feature**
 
-### 2. Enable Depth and Normals Textures
+### 2. Add OutlineManager
 
-1. Select your **URP Asset** (e.g. `Assets/Settings/UniversalRenderPipelineAsset.asset`)
-2. Enable **Depth Texture** under the General section
-3. Enable **Opaque Texture** (recommended for screen-space mode)
+Create an empty GameObject → **Add Component → OutlineManager**
 
----
+### 3. Add outlines to objects
 
-## Quick Start
-
-### 1. Add OutlineManager to your scene
-
-Create an empty GameObject and add the `OutlineManager` component.
-It is a persistent singleton (`DontDestroyOnLoad`).
-
-### 2. Add outlines to objects
-
-Add the `OutlineObject` component to any GameObject with a `MeshRenderer`, `SkinnedMeshRenderer`, or `SpriteRenderer`.
-
-Configure in the Inspector:
-- **Enabled** — toggle on/off
-- **Outline Mode** — `Outline3D`, `ScreenSpace`, or `Outline2D`
-- **Color** — RGBA outline color
-- **Thickness** — 0 to 20
+Select any GameObject with a `MeshRenderer`, `SkinnedMeshRenderer`, or `SpriteRenderer`  
+→ **Add Component → OutlineObject** → configure in Inspector
 
 ---
 
-## Usage Example
+## Runtime Usage
 
 ```csharp
 using AdvancedOutlineSystem;
-using UnityEngine;
 
-public class HighlightOnHover : MonoBehaviour
-{
-    private OutlineObject _outline;
+var outline = GetComponent<OutlineObject>();
 
-    private void Awake() => _outline = GetComponent<OutlineObject>();
+// Enable with color
+outline.OutlineColor     = Color.yellow;
+outline.OutlineThickness = 5f;
+outline.OutlineEnabled   = true;
 
-    private void OnMouseEnter()
-    {
-        _outline.OutlineColor     = Color.yellow;
-        _outline.OutlineThickness = 5f;
-        _outline.OutlineEnabled   = true;
-    }
+// Disable
+outline.OutlineEnabled = false;
 
-    private void OnMouseExit() => _outline.OutlineEnabled = false;
-}
+// Change mode
+outline.Mode = OutlineMode.ScreenSpace;
 ```
 
 ---
 
-## Documentation
+## In-Editor Documentation
 
-| File | Contents |
-|------|----------|
-| [SetupGuide.md](SetupGuide.md) | URP setup, depth/normal requirements, common mistakes |
-| [API.md](API.md) | Full public API reference with code examples |
+After installing, open:  
+**Tools → Advanced Outline System → Documentation**
+
+Covers: How To Use, Setup Guide, API Reference, Troubleshooting.
 
 ---
 
-## Author
+## Documentation Files
 
-Mostafa Mahmoud Abdelrahman © 2026 All rights reserved.
-Portfolio: https://mostafamahmoudabdelrahman.github.io/mostafa-mahmoud-portfolio/
+| File | Contents |
+|------|----------|
+| [SetupGuide.md](SetupGuide.md) | URP setup, depth/normal requirements, shadow atlas |
+| [API.md](API.md) | Full public API with code examples |
+
+---
 
 ## License
 
