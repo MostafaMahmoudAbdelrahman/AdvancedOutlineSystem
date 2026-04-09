@@ -10,7 +10,7 @@ High-performance 2D/3D outline rendering system for Unity's Universal Render Pip
 ## Install via Package Manager
 
 ```
-https://github.com/MostafaMahmoudAbdelrahman/advanced-outline-system.git
+https://github.com/MostafaMahmoudAbdelrahman/AdvancedOutlineSystem.git
 ```
 
 Window → Package Manager → **+** → Add package from git URL

@@ -33,7 +33,7 @@ A high-performance, zero-allocation outline rendering system for Unity's Univers
 2. Click **+** → **Add package from git URL**
 3. Enter:
    ```
-   https://github.com/MostafaMahmoudAbdelrahman/advanced-outline-system.git
+   https://github.com/MostafaMahmoudAbdelrahman/AdvancedOutlineSystem.git
    ```
 4. Click **Add**
 
