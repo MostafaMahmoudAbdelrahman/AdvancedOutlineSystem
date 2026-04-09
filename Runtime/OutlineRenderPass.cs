@@ -44,32 +44,37 @@ namespace AdvancedOutlineSystem
             return _outlineMaterial;
         }
 
-        // ── Unity 6 / URP 17 RenderGraph path ────────────────────────────────
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             var manager = OutlineManager.Instance;
             if (manager == null || manager.Objects3D.Count == 0) return;
 
+            var mat = GetMaterial();
+            if (mat == null) return;
+
+            var resourceData = frameData.Get<UniversalResourceData>();
+
             using (var builder = renderGraph.AddUnsafePass<PassData>(_profilerTag, out var passData))
             {
-                var resourceData = frameData.Get<UniversalResourceData>();
                 passData.ColorTarget = resourceData.activeColorTexture;
                 passData.Pass        = this;
+                passData.Material    = mat;
 
                 builder.UseTexture(passData.ColorTarget, AccessFlags.Write);
                 builder.AllowPassCulling(false);
+
                 builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
-                    data.Pass.ExecutePass(ctx.cmd));
+                {
+                    CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd);
+                    data.Pass.ExecutePass(cmd, data.Material);
+                });
             }
         }
 
-        private void ExecutePass(UnsafeCommandBuffer cmd)
+        private void ExecutePass(CommandBuffer cmd, Material mat)
         {
             var manager = OutlineManager.Instance;
             if (manager == null) return;
-
-            var mat = GetMaterial();
-            if (mat == null) return;
 
             foreach (var obj in manager.Objects3D)
             {
@@ -110,8 +115,9 @@ namespace AdvancedOutlineSystem
 
         private class PassData
         {
-            public TextureHandle ColorTarget;
+            public TextureHandle  ColorTarget;
             public OutlineRenderPass Pass;
+            public Material       Material;
         }
     }
 }

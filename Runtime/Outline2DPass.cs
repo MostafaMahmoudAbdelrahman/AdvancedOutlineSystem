@@ -43,7 +43,6 @@ namespace AdvancedOutlineSystem
             return _material;
         }
 
-        // ── Unity 6 / URP 17 RenderGraph path ────────────────────────────────
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             var manager = OutlineManager.Instance;
@@ -62,12 +61,16 @@ namespace AdvancedOutlineSystem
 
                 builder.UseTexture(passData.ColorTarget, AccessFlags.Write);
                 builder.AllowPassCulling(false);
+
                 builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
-                    data.Pass.ExecutePass(ctx.cmd, data.Material));
+                {
+                    CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd);
+                    data.Pass.ExecutePass(cmd, data.Material);
+                });
             }
         }
 
-        private void ExecutePass(UnsafeCommandBuffer cmd, Material mat)
+        private void ExecutePass(CommandBuffer cmd, Material mat)
         {
             var manager = OutlineManager.Instance;
             if (manager == null) return;

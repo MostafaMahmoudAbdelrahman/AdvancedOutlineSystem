@@ -42,7 +42,6 @@ namespace AdvancedOutlineSystem
             return _material;
         }
 
-        // ── Unity 6 / URP 17 RenderGraph path ────────────────────────────────
         public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             var manager = OutlineManager.Instance;
@@ -64,18 +63,16 @@ namespace AdvancedOutlineSystem
 
                 builder.UseTexture(passData.ColorTarget, AccessFlags.ReadWrite);
                 builder.AllowPassCulling(false);
+
                 builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
                 {
-                    // Full-screen blit via temporary RT
-                    var desc = new RenderTextureDescriptor(
-                        Screen.width, Screen.height,
-                        RenderTextureFormat.Default, 0);
+                    // Get native CommandBuffer — required for Blitter in Unity 6
+                    CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd);
 
-                    int tempId = Shader.PropertyToID("_ScreenSpaceOutlineTemp");
-                    ctx.cmd.GetTemporaryRT(tempId, desc);
-                    ctx.cmd.Blit(data.ColorTarget, tempId, data.Material);
-                    ctx.cmd.Blit(tempId, data.ColorTarget);
-                    ctx.cmd.ReleaseTemporaryRT(tempId);
+                    // Full-screen blit: copy color target through the outline material
+                    ctx.cmd.SetRenderTarget(data.ColorTarget);
+                    Blitter.BlitTexture(cmd, data.ColorTarget,
+                        new Vector4(1, 1, 0, 0), data.Material, 0);
                 });
             }
         }

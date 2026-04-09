@@ -1,7 +1,7 @@
 {
     "name": "com.mostafa.advancedoutline",
     "displayName": "Advanced Outline System (URP)",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "unity": "2021.3",
     "unityRelease": "0f1",
     "description": "High-performance 2D/3D outline system for Unity URP. Supports inverted-hull 3D outlines, screen-space depth/normal edge detection, and 2D sprite outlines. Zero per-frame allocations via MaterialPropertyBlock batching.",
