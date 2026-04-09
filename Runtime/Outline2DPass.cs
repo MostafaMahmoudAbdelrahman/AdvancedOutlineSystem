@@ -1,0 +1,85 @@
+// ------------------------------------------------------------------------------
+// Outline2DPass.cs
+// Copyright (c) 2026 Mostafa Mahmoud Abdelrahman
+// Website: https://mostafamahmoudabdelrahman.github.io/mostafa-mahmoud-portfolio/
+// ------------------------------------------------------------------------------
+
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+
+namespace AdvancedOutlineSystem
+{
+    /// <summary>
+    /// 2D outline pass for SpriteRenderer objects.
+    /// Uses alpha-based edge detection via the Outline2D shader.
+    /// </summary>
+    public class Outline2DPass : ScriptableRenderPass, System.IDisposable
+    {
+        private readonly string _profilerTag;
+        private Material        _material;
+
+        private static readonly int ColorProp     = Shader.PropertyToID("_OutlineColor");
+        private static readonly int ThicknessProp = Shader.PropertyToID("_OutlineThickness");
+        private static readonly int MainTexProp   = Shader.PropertyToID("_MainTex");
+
+        public Outline2DPass(string tag, RenderPassEvent evt)
+        {
+            _profilerTag    = tag;
+            renderPassEvent = evt;
+        }
+
+        private Material GetMaterial()
+        {
+            if (_material != null) return _material;
+            var shader = Shader.Find("AdvancedOutlineSystem/Outline2D");
+            if (shader == null)
+            {
+                Debug.LogError("[OutlineSystem] Shader 'AdvancedOutlineSystem/Outline2D' not found.");
+                return null;
+            }
+            _material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+            return _material;
+        }
+
+        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        {
+            var manager = OutlineManager.Instance;
+            if (manager == null) return;
+
+            var objects = manager.Objects2D;
+            if (objects.Count == 0) return;
+
+            var mat = GetMaterial();
+            if (mat == null) return;
+
+            var cmd = CommandBufferPool.Get(_profilerTag);
+
+            foreach (var obj in objects)
+            {
+                if (obj == null || !obj.OutlineEnabled) continue;
+
+                var sr = obj.GetComponent<SpriteRenderer>();
+                if (sr == null || sr.sprite == null) continue;
+
+                mat.SetColor(ColorProp,     obj.OutlineColor);
+                mat.SetFloat(ThicknessProp, obj.OutlineThickness);
+                mat.SetTexture(MainTexProp, sr.sprite.texture);
+
+                cmd.DrawRenderer(sr, mat, 0, 0);
+            }
+
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
+        }
+
+        public void Dispose()
+        {
+            if (_material != null)
+            {
+                Object.DestroyImmediate(_material);
+                _material = null;
+            }
+        }
+    }
+}

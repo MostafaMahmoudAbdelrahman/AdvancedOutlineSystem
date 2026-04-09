@@ -1,0 +1,22 @@
+{
+    "name": "AdvancedOutlineSystem.Runtime",
+    "rootNamespace": "AdvancedOutlineSystem",
+    "references": [
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.render-pipelines.universal",
+            "expression": "12.0.0",
+            "define": "URP_12_OR_NEWER"
+        }
+    ],
+    "noEngineReferences": false
+}

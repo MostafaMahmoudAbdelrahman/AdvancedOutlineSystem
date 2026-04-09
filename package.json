@@ -1,0 +1,35 @@
+{
+    "name": "com.mostafa.advancedoutline",
+    "displayName": "Advanced Outline System (URP)",
+    "version": "1.0.0",
+    "unity": "2021.3",
+    "unityRelease": "0f1",
+    "description": "High-performance 2D/3D outline system for Unity URP. Supports inverted-hull 3D outlines, screen-space depth/normal edge detection, and 2D sprite outlines. Zero per-frame allocations via MaterialPropertyBlock batching.",
+    "documentationUrl": "https://mostafamahmoudabdelrahman.github.io/mostafa-mahmoud-portfolio/",
+    "changelogUrl": "https://github.com/MostafaMahmoudAbdelrahman/advanced-outline-system/blob/main/CHANGELOG.md",
+    "licensesUrl": "https://github.com/MostafaMahmoudAbdelrahman/advanced-outline-system/blob/main/LICENSE.md",
+    "dependencies": {
+        "com.unity.render-pipelines.universal": "12.0.0"
+    },
+    "keywords": [
+        "outline",
+        "urp",
+        "rendering",
+        "post-processing",
+        "shader",
+        "2d",
+        "3d",
+        "screen-space"
+    ],
+    "author": {
+        "name": "Mostafa Mahmoud Abdelrahman",
+        "url": "https://mostafamahmoudabdelrahman.github.io/mostafa-mahmoud-portfolio/"
+    },
+    "samples": [
+        {
+            "displayName": "Demo Scene",
+            "description": "Procedural runtime demo showing all three outline modes (3D, Screen-Space, 2D). No scene dependencies.",
+            "path": "Samples~/Demo"
+        }
+    ]
+}

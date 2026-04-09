@@ -1,0 +1,23 @@
+# Unity auto-generated — never commit these
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# IDE
+.vs/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Exported packages
+*.unitypackage
