@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.1] — 2026-04-10
+
+### Fixed
+- Added `.meta` files for all package assets — eliminates "no meta file, immutable folder" warnings when installed via Git URL in Unity Package Manager
+- Added `OutlineShadowAtlasFix` component — automatically upgrades the URP additional-lights shadow atlas to 4096 when needed, resolving the "shadow atlas too small" console warning
+- Added `OutlineShadowAtlasFix.cs.meta` for proper Unity import
+
+---
+
 ## [1.0.0] — 2026-04-10
 
 ### Added
