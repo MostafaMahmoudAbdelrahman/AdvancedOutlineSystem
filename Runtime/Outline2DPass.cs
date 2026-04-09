@@ -7,12 +7,13 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace AdvancedOutlineSystem
 {
     /// <summary>
     /// 2D outline pass for SpriteRenderer objects.
-    /// Uses alpha-based edge detection via the Outline2D shader.
+    /// Compatible with Unity 6 / URP 17 RenderGraph API.
     /// </summary>
     public class Outline2DPass : ScriptableRenderPass, System.IDisposable
     {
@@ -42,20 +43,36 @@ namespace AdvancedOutlineSystem
             return _material;
         }
 
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        // ── Unity 6 / URP 17 RenderGraph path ────────────────────────────────
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             var manager = OutlineManager.Instance;
-            if (manager == null) return;
-
-            var objects = manager.Objects2D;
-            if (objects.Count == 0) return;
+            if (manager == null || manager.Objects2D.Count == 0) return;
 
             var mat = GetMaterial();
             if (mat == null) return;
 
-            var cmd = CommandBufferPool.Get(_profilerTag);
+            var resourceData = frameData.Get<UniversalResourceData>();
 
-            foreach (var obj in objects)
+            using (var builder = renderGraph.AddUnsafePass<PassData>(_profilerTag, out var passData))
+            {
+                passData.ColorTarget = resourceData.activeColorTexture;
+                passData.Pass        = this;
+                passData.Material    = mat;
+
+                builder.UseTexture(passData.ColorTarget, AccessFlags.Write);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
+                    data.Pass.ExecutePass(ctx.cmd, data.Material));
+            }
+        }
+
+        private void ExecutePass(UnsafeCommandBuffer cmd, Material mat)
+        {
+            var manager = OutlineManager.Instance;
+            if (manager == null) return;
+
+            foreach (var obj in manager.Objects2D)
             {
                 if (obj == null || !obj.OutlineEnabled) continue;
 
@@ -68,9 +85,6 @@ namespace AdvancedOutlineSystem
 
                 cmd.DrawRenderer(sr, mat, 0, 0);
             }
-
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
         }
 
         public void Dispose()
@@ -80,6 +94,13 @@ namespace AdvancedOutlineSystem
                 Object.DestroyImmediate(_material);
                 _material = null;
             }
+        }
+
+        private class PassData
+        {
+            public TextureHandle ColorTarget;
+            public Outline2DPass Pass;
+            public Material      Material;
         }
     }
 }

@@ -12,19 +12,16 @@ namespace AdvancedOutlineSystem
 {
     /// <summary>
     /// Automatically upgrades the URP additional-lights shadow atlas to 4096.
-    /// Eliminates the "shadow atlas too small" console warning.
+    /// Eliminates the "Reduced shadow resolution" console warning.
     /// Attach to the same GameObject as OutlineManager, or any persistent GO.
     /// </summary>
     [AddComponentMenu("Advanced Outline System/Outline Shadow Atlas Fix")]
     public class OutlineShadowAtlasFix : MonoBehaviour
     {
-        [Tooltip("Atlas size to apply. Default 4096 fits up to 32 shadow maps.")]
+        [Tooltip("Target atlas size in pixels. 4096 fits up to 32 shadow maps.")]
         public int targetAtlasSize = 4096;
 
-        private void Awake()
-        {
-            ApplyFix();
-        }
+        private void Awake() => ApplyFix();
 
         private void ApplyFix()
         {
@@ -35,16 +32,16 @@ namespace AdvancedOutlineSystem
                 return;
             }
 
+            // In Unity 6 / URP 17+ additionalLightsShadowmapResolution is an int property.
+            // We read it via the property and write back using the URP-specific enum cast.
             int current = (int)urpAsset.additionalLightsShadowmapResolution;
 
             if (current < targetAtlasSize)
             {
-                // Cast to the fully-qualified URP type to avoid ambiguity with UnityEngine.ShadowResolution
                 urpAsset.additionalLightsShadowmapResolution =
                     (UnityEngine.Rendering.Universal.ShadowResolution)targetAtlasSize;
 
-                Debug.Log($"[OutlineSystem] Shadow atlas upgraded: {current} → {targetAtlasSize}. " +
-                          "Shadow atlas warning resolved.");
+                Debug.Log($"[OutlineSystem] Shadow atlas upgraded {current} → {targetAtlasSize}.");
             }
         }
     }

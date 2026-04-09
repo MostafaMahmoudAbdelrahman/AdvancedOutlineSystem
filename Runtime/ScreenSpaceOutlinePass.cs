@@ -7,12 +7,13 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace AdvancedOutlineSystem
 {
     /// <summary>
     /// Screen-space outline pass using depth + normals edge detection.
-    /// Renders a full-screen blit that detects edges from the depth/normal buffer.
+    /// Compatible with Unity 6 / URP 17 RenderGraph API.
     /// </summary>
     public class ScreenSpaceOutlinePass : ScriptableRenderPass, System.IDisposable
     {
@@ -21,9 +22,6 @@ namespace AdvancedOutlineSystem
 
         private static readonly int ColorProp     = Shader.PropertyToID("_OutlineColor");
         private static readonly int ThicknessProp = Shader.PropertyToID("_OutlineThickness");
-
-        private RenderTargetIdentifier  _cameraColorTarget;
-        private RenderTextureDescriptor _descriptor;
 
         public ScreenSpaceOutlinePass(string tag, RenderPassEvent evt)
         {
@@ -44,38 +42,42 @@ namespace AdvancedOutlineSystem
             return _material;
         }
 
-        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
-        {
-            _descriptor        = renderingData.cameraData.cameraTargetDescriptor;
-            _cameraColorTarget = renderingData.cameraData.renderer.cameraColorTarget;
-        }
-
-        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        // ── Unity 6 / URP 17 RenderGraph path ────────────────────────────────
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
             var manager = OutlineManager.Instance;
-            if (manager == null) return;
-
-            var objects = manager.ObjectsScreen;
-            if (objects.Count == 0) return;
+            if (manager == null || manager.ObjectsScreen.Count == 0) return;
 
             var mat = GetMaterial();
             if (mat == null) return;
 
-            // First registered screen-space object drives the global settings
-            var first = objects[0];
+            var first = manager.ObjectsScreen[0];
             mat.SetColor(ColorProp,     first.OutlineColor);
             mat.SetFloat(ThicknessProp, first.OutlineThickness);
 
-            var cmd = CommandBufferPool.Get(_profilerTag);
+            var resourceData = frameData.Get<UniversalResourceData>();
 
-            int tempId = Shader.PropertyToID("_ScreenSpaceOutlineTemp");
-            cmd.GetTemporaryRT(tempId, _descriptor);
-            cmd.Blit(_cameraColorTarget, tempId, mat);
-            cmd.Blit(tempId, _cameraColorTarget);
-            cmd.ReleaseTemporaryRT(tempId);
+            using (var builder = renderGraph.AddUnsafePass<PassData>(_profilerTag, out var passData))
+            {
+                passData.ColorTarget = resourceData.activeColorTexture;
+                passData.Material    = mat;
 
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
+                builder.UseTexture(passData.ColorTarget, AccessFlags.ReadWrite);
+                builder.AllowPassCulling(false);
+                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
+                {
+                    // Full-screen blit via temporary RT
+                    var desc = new RenderTextureDescriptor(
+                        Screen.width, Screen.height,
+                        RenderTextureFormat.Default, 0);
+
+                    int tempId = Shader.PropertyToID("_ScreenSpaceOutlineTemp");
+                    ctx.cmd.GetTemporaryRT(tempId, desc);
+                    ctx.cmd.Blit(data.ColorTarget, tempId, data.Material);
+                    ctx.cmd.Blit(tempId, data.ColorTarget);
+                    ctx.cmd.ReleaseTemporaryRT(tempId);
+                });
+            }
         }
 
         public void Dispose()
@@ -85,6 +87,12 @@ namespace AdvancedOutlineSystem
                 Object.DestroyImmediate(_material);
                 _material = null;
             }
+        }
+
+        private class PassData
+        {
+            public TextureHandle ColorTarget;
+            public Material      Material;
         }
     }
 }

@@ -10,8 +10,9 @@ using UnityEngine.Rendering.Universal;
 namespace AdvancedOutlineSystem
 {
     /// <summary>
-    /// URP ScriptableRendererFeature that injects the outline passes
-    /// before post-processing. Add via the URP Renderer asset Inspector.
+    /// URP ScriptableRendererFeature that injects the outline passes.
+    /// Compatible with Unity 6 / URP 17 RenderGraph API.
+    /// Add via the URP Renderer asset Inspector.
     /// </summary>
     public class OutlineRenderFeature : ScriptableRendererFeature
     {
@@ -25,9 +26,9 @@ namespace AdvancedOutlineSystem
 
         public OutlineSettings settings = new OutlineSettings();
 
-        private OutlineRenderPass  _pass3D;
+        private OutlineRenderPass      _pass3D;
         private ScreenSpaceOutlinePass _passScreen;
-        private Outline2DPass      _pass2D;
+        private Outline2DPass          _pass2D;
 
         public override void Create()
         {

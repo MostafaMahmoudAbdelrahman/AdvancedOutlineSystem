@@ -5,7 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.0.1] — 2026-04-10
+## [1.0.2] — 2026-04-10
+
+### Fixed
+- Migrated `OutlineRenderPass`, `ScreenSpaceOutlinePass`, `Outline2DPass` to Unity 6 / URP 17 **RenderGraph API** (`RecordRenderGraph` + `AddUnsafePass`) — resolves `CommandBufferPool` not found and `cameraColorTarget` obsolete errors
+- Fixed `OutlineShadowAtlasFix` — removed ambiguous `ShadowResolution` cast; reads atlas size as `int` and writes back via explicit URP enum cast
+- Updated Runtime and Editor asmdefs to reference `Unity.RenderPipelines.Core.Runtime` — resolves Burst `AdvancedOutlineSystem.Editor` assembly resolution failure
+- Removed stale `versionDefines` from Runtime asmdef
+
+---
+
+
 
 ### Fixed
 - Added `.meta` files for all package assets — eliminates "no meta file, immutable folder" warnings when installed via Git URL in Unity Package Manager
