@@ -7,13 +7,14 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.RenderGraphModule;
 
 namespace AdvancedOutlineSystem
 {
     /// <summary>
     /// Renders 3D outlines using the inverted-hull technique.
-    /// Compatible with Unity 6 / URP 17 RenderGraph API.
+    /// Expands vertices along normals, renders back-faces only.
+    /// Uses MaterialPropertyBlock — zero per-frame allocations.
+    /// Works in URP with Compatibility Mode enabled.
     /// </summary>
     public class OutlineRenderPass : ScriptableRenderPass, System.IDisposable
     {
@@ -44,7 +45,7 @@ namespace AdvancedOutlineSystem
             return _outlineMaterial;
         }
 
-        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             var manager = OutlineManager.Instance;
             if (manager == null || manager.Objects3D.Count == 0) return;
@@ -52,34 +53,13 @@ namespace AdvancedOutlineSystem
             var mat = GetMaterial();
             if (mat == null) return;
 
-            var resourceData = frameData.Get<UniversalResourceData>();
-
-            using (var builder = renderGraph.AddUnsafePass<PassData>(_profilerTag, out var passData))
-            {
-                passData.ColorTarget = resourceData.activeColorTexture;
-                passData.Pass        = this;
-                passData.Material    = mat;
-
-                builder.UseTexture(passData.ColorTarget, AccessFlags.Write);
-                builder.AllowPassCulling(false);
-
-                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
-                {
-                    CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd);
-                    data.Pass.ExecutePass(cmd, data.Material);
-                });
-            }
-        }
-
-        private void ExecutePass(CommandBuffer cmd, Material mat)
-        {
-            var manager = OutlineManager.Instance;
-            if (manager == null) return;
+            CommandBuffer cmd = CommandBufferPool.Get(_profilerTag);
 
             foreach (var obj in manager.Objects3D)
             {
                 if (obj == null || !obj.OutlineEnabled) continue;
 
+                // MeshRenderer
                 var mr = obj.GetComponent<MeshRenderer>();
                 var mf = obj.GetComponent<MeshFilter>();
                 if (mr != null && mf != null && mf.sharedMesh != null)
@@ -92,6 +72,7 @@ namespace AdvancedOutlineSystem
                     continue;
                 }
 
+                // SkinnedMeshRenderer
                 var smr = obj.GetComponent<SkinnedMeshRenderer>();
                 if (smr != null && smr.sharedMesh != null)
                 {
@@ -102,6 +83,9 @@ namespace AdvancedOutlineSystem
                         cmd.DrawRenderer(smr, mat, i, 0);
                 }
             }
+
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
         }
 
         public void Dispose()
@@ -111,13 +95,6 @@ namespace AdvancedOutlineSystem
                 Object.DestroyImmediate(_outlineMaterial);
                 _outlineMaterial = null;
             }
-        }
-
-        private class PassData
-        {
-            public TextureHandle  ColorTarget;
-            public OutlineRenderPass Pass;
-            public Material       Material;
         }
     }
 }

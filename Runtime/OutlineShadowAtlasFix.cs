@@ -6,50 +6,47 @@
 
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace AdvancedOutlineSystem
 {
     /// <summary>
-    /// Logs a clear recommendation when the shadow atlas is too small.
-    /// In URP 17 (Unity 6) additionalLightsShadowmapResolution is read-only at runtime;
-    /// the atlas must be configured in the URP Asset before play mode.
+    /// Checks the URP shadow atlas size on startup and logs a warning
+    /// if it is too small to fit all active shadow maps without quality loss.
+    /// To fix the warning: URP Asset → Shadows → Additional Lights Shadow Atlas → 4096.
     /// </summary>
     [AddComponentMenu("Advanced Outline System/Outline Shadow Atlas Fix")]
     public class OutlineShadowAtlasFix : MonoBehaviour
     {
-        [Tooltip("Recommended minimum atlas size. If the current URP Asset value is smaller, a warning is logged.")]
+        [Tooltip("Minimum recommended atlas size in pixels. 4096 fits up to 32 shadow maps.")]
         public int recommendedAtlasSize = 4096;
 
         private void Awake() => CheckAtlas();
 
         private void CheckAtlas()
         {
-            var urpAsset = GraphicsSettings.currentRenderPipeline;
+            var urpAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
             if (urpAsset == null)
             {
-                Debug.LogWarning("[OutlineSystem] ShadowAtlasFix: No render pipeline asset found.");
+                Debug.LogWarning("[OutlineSystem] ShadowAtlasFix: No URP asset found.");
                 return;
             }
 
-            // Use reflection to read the value safely across URP versions
-            var prop = urpAsset.GetType().GetProperty("additionalLightsShadowmapResolution");
-            if (prop == null)
-            {
-                Debug.LogWarning("[OutlineSystem] ShadowAtlasFix: Could not read shadow atlas size via reflection.");
-                return;
-            }
+            // additionalLightsShadowmapResolution is UnityEngine.Rendering.Universal.ShadowResolution
+            // Cast to int explicitly to compare against the recommended size.
+            int current = (int)urpAsset.additionalLightsShadowmapResolution;
 
-            int current = (int)prop.GetValue(urpAsset);
             if (current < recommendedAtlasSize)
             {
                 Debug.LogWarning(
-                    $"[OutlineSystem] Shadow atlas is {current}. " +
-                    $"Recommended: {recommendedAtlasSize}. " +
-                    "To fix: select your URP Asset → Shadows → Additional Lights Shadow Atlas Resolution → set to 4096.");
+                    $"[OutlineSystem] Additional lights shadow atlas is {current}px. " +
+                    $"Recommended minimum: {recommendedAtlasSize}px. " +
+                    "Fix: select your URP Asset → Shadows → " +
+                    "Additional Lights Shadow Atlas Resolution → set to 4096.");
             }
             else
             {
-                Debug.Log($"[OutlineSystem] Shadow atlas OK ({current}).");
+                Debug.Log($"[OutlineSystem] Shadow atlas size OK: {current}px.");
             }
         }
     }

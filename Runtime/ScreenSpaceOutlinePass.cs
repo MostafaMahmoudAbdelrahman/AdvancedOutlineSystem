@@ -7,21 +7,25 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.RenderGraphModule;
 
 namespace AdvancedOutlineSystem
 {
     /// <summary>
     /// Screen-space outline pass using depth + normals edge detection.
-    /// Compatible with Unity 6 / URP 17 RenderGraph API.
+    /// Full-screen blit via CommandBufferPool — works in URP with
+    /// Compatibility Mode enabled (Project Settings → Graphics → Render Graph).
     /// </summary>
     public class ScreenSpaceOutlinePass : ScriptableRenderPass, System.IDisposable
     {
         private readonly string _profilerTag;
         private Material        _material;
 
+        private RenderTargetIdentifier  _cameraColorTarget;
+        private RenderTextureDescriptor _descriptor;
+
         private static readonly int ColorProp     = Shader.PropertyToID("_OutlineColor");
         private static readonly int ThicknessProp = Shader.PropertyToID("_OutlineThickness");
+        private static readonly int TempTexId     = Shader.PropertyToID("_ScreenSpaceOutlineTemp");
 
         public ScreenSpaceOutlinePass(string tag, RenderPassEvent evt)
         {
@@ -42,7 +46,14 @@ namespace AdvancedOutlineSystem
             return _material;
         }
 
-        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
+        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        {
+            _descriptor        = renderingData.cameraData.cameraTargetDescriptor;
+            _descriptor.depthBufferBits = 0;
+            _cameraColorTarget = renderingData.cameraData.renderer.cameraColorTargetHandle;
+        }
+
+        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             var manager = OutlineManager.Instance;
             if (manager == null || manager.ObjectsScreen.Count == 0) return;
@@ -54,27 +65,20 @@ namespace AdvancedOutlineSystem
             mat.SetColor(ColorProp,     first.OutlineColor);
             mat.SetFloat(ThicknessProp, first.OutlineThickness);
 
-            var resourceData = frameData.Get<UniversalResourceData>();
+            CommandBuffer cmd = CommandBufferPool.Get(_profilerTag);
 
-            using (var builder = renderGraph.AddUnsafePass<PassData>(_profilerTag, out var passData))
-            {
-                passData.ColorTarget = resourceData.activeColorTexture;
-                passData.Material    = mat;
+            cmd.GetTemporaryRT(TempTexId, _descriptor);
+            cmd.Blit(_cameraColorTarget, TempTexId, mat);
+            cmd.Blit(TempTexId, _cameraColorTarget);
+            cmd.ReleaseTemporaryRT(TempTexId);
 
-                builder.UseTexture(passData.ColorTarget, AccessFlags.ReadWrite);
-                builder.AllowPassCulling(false);
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
+        }
 
-                builder.SetRenderFunc((PassData data, UnsafeGraphContext ctx) =>
-                {
-                    // Get native CommandBuffer — required for Blitter in Unity 6
-                    CommandBuffer cmd = CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd);
-
-                    // Full-screen blit: copy color target through the outline material
-                    ctx.cmd.SetRenderTarget(data.ColorTarget);
-                    Blitter.BlitTexture(cmd, data.ColorTarget,
-                        new Vector4(1, 1, 0, 0), data.Material, 0);
-                });
-            }
+        public override void OnCameraCleanup(CommandBuffer cmd)
+        {
+            // No persistent RT to release
         }
 
         public void Dispose()
@@ -84,12 +88,6 @@ namespace AdvancedOutlineSystem
                 Object.DestroyImmediate(_material);
                 _material = null;
             }
-        }
-
-        private class PassData
-        {
-            public TextureHandle ColorTarget;
-            public Material      Material;
         }
     }
 }
