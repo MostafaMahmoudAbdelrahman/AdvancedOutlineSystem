@@ -13,12 +13,9 @@ namespace AdvancedOutlineSystem.Editor
     /// <summary>
     /// Exports the Advanced Outline System as a .unitypackage.
     ///
-    /// IMPORTANT: AssetDatabase.ExportPackage only works on assets that live
-    /// inside the project's Assets/ folder. When the package is installed via
-    /// Git URL it lives in Library/PackageCache and cannot be exported directly.
-    ///
-    /// This tool copies the package into Assets/AdvancedOutlineSystem_Export/,
-    /// exports from there, then removes the temporary copy automatically.
+    /// When installed via Git URL the package lives in Library/PackageCache
+    /// which AssetDatabase cannot export directly. This tool copies the package
+    /// into a temporary Assets/ folder, exports, then cleans up automatically.
     /// </summary>
     public static class OutlinePackageExporter
     {
@@ -31,24 +28,23 @@ namespace AdvancedOutlineSystem.Editor
         [MenuItem("Tools/Advanced Outline System/Export .unitypackage")]
         public static void Export()
         {
-            // 1. Locate the package source on disk
             string sourcePath = FindPackageSourcePath();
             if (string.IsNullOrEmpty(sourcePath))
             {
-                Debug.LogError(
-                    "[OutlineSystem] Cannot locate package source. " +
-                    "Make sure 'com.mostafa.advancedoutline' is installed.");
+                Debug.LogError("[OutlineSystem] Cannot locate package source. " +
+                               "Make sure 'com.mostafa.advancedoutline' is installed.");
                 return;
             }
 
-            // 2. Copy into Assets/ so AssetDatabase can see it
+            Debug.Log($"[OutlineSystem] Package source: {sourcePath}");
+
+            // Copy into Assets/ so AssetDatabase can see it
             if (Directory.Exists(TempAssetPath))
                 Directory.Delete(TempAssetPath, true);
 
             CopyDirectory(sourcePath, TempAssetPath);
             AssetDatabase.Refresh();
 
-            // 3. Export
             string outputPath = Path.Combine(
                 Directory.GetParent(Application.dataPath).FullName,
                 OutputFileName);
@@ -65,15 +61,7 @@ namespace AdvancedOutlineSystem.Editor
             }
             finally
             {
-                // 4. Always clean up the temporary copy
-                if (Directory.Exists(TempAssetPath))
-                    Directory.Delete(TempAssetPath, true);
-
-                string metaFile = TempAssetPath + ".meta";
-                if (File.Exists(metaFile))
-                    File.Delete(metaFile);
-
-                AssetDatabase.Refresh();
+                Cleanup();
             }
         }
 
@@ -84,26 +72,21 @@ namespace AdvancedOutlineSystem.Editor
         {
             bool ok = true;
 
-            string[] shaders =
+            // Shaders
+            foreach (var s in new[]
             {
                 "AdvancedOutlineSystem/Outline3D",
                 "AdvancedOutlineSystem/Outline2D",
                 "AdvancedOutlineSystem/ScreenSpaceOutline"
-            };
-
-            foreach (var s in shaders)
+            })
             {
                 if (Shader.Find(s) == null)
-                {
-                    Debug.LogError($"[OutlineSystem] ✗ Missing shader: {s}");
-                    ok = false;
-                }
+                { Debug.LogError($"[OutlineSystem] ✗ Missing shader: {s}"); ok = false; }
                 else
-                {
                     Debug.Log($"[OutlineSystem] ✓ Shader found: {s}");
-                }
             }
 
+            // Package source
             string source = FindPackageSourcePath();
             if (string.IsNullOrEmpty(source))
             {
@@ -113,88 +96,101 @@ namespace AdvancedOutlineSystem.Editor
             else
             {
                 Debug.Log($"[OutlineSystem] ✓ Package source: {source}");
-
-                string runtimeAsmdef = Path.Combine(source, "Runtime",
-                    "AdvancedOutlineSystem.Runtime.asmdef");
-                string editorAsmdef  = Path.Combine(source, "Editor",
-                    "AdvancedOutlineSystem.Editor.asmdef");
-                string pkgJson       = Path.Combine(source, "package.json");
-
-                LogCheck("package.json",       File.Exists(pkgJson),       ref ok);
-                LogCheck("Runtime asmdef",     File.Exists(runtimeAsmdef), ref ok);
-                LogCheck("Editor asmdef",      File.Exists(editorAsmdef),  ref ok);
+                LogCheck("package.json",   File.Exists(Path.Combine(source, "package.json")),                                          ref ok);
+                LogCheck("Runtime asmdef", File.Exists(Path.Combine(source, "Runtime", "AdvancedOutlineSystem.Runtime.asmdef")),        ref ok);
+                LogCheck("Editor asmdef",  File.Exists(Path.Combine(source, "Editor",  "AdvancedOutlineSystem.Editor.asmdef")),         ref ok);
             }
 
             Debug.Log(ok
-                ? "[OutlineSystem] ✓ All validations passed."
-                : "[OutlineSystem] ⚠ Validation completed with errors.");
+                ? "[OutlineSystem] ✓ All validations passed. Ready for export."
+                : "[OutlineSystem] ⚠ Validation completed with errors. Fix before exporting.");
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────
+        // ── Source path discovery ─────────────────────────────────────────────
 
         /// <summary>
-        /// Finds the package root on disk regardless of how it was installed
-        /// (Git URL → PackageCache, local path, or copied into Assets/).
+        /// Finds the package root on disk using three strategies in order:
+        ///   1. Scan Library/PackageCache for a folder starting with the package name
+        ///   2. Check the Packages/ folder (local path installs)
+        ///   3. Check Assets/ (manual copy installs)
+        /// Deliberately avoids PackageManager.Client.List — it requires async
+        /// callbacks and is unreliable when called synchronously in Editor menus.
         /// </summary>
-        private static string FindPackageSourcePath()
+        public static string FindPackageSourcePath()
         {
-            // Strategy 1: UnityEditor.PackageManager resolved path
-            var listRequest = UnityEditor.PackageManager.Client.List(true);
-            while (!listRequest.IsCompleted) { /* spin — fast in Editor */ }
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
 
-            if (listRequest.Status == UnityEditor.PackageManager.StatusCode.Success)
-            {
-                foreach (var pkg in listRequest.Result)
-                {
-                    if (pkg.name == PackageName)
-                    {
-                        string resolved = pkg.resolvedPath;
-                        if (!string.IsNullOrEmpty(resolved) && Directory.Exists(resolved))
-                            return resolved;
-                    }
-                }
-            }
-
-            // Strategy 2: Scan Library/PackageCache
-            string cacheRoot = Path.Combine(
-                Directory.GetParent(Application.dataPath).FullName,
-                "Library", "PackageCache");
-
+            // Strategy 1 — Library/PackageCache (Git URL / registry installs)
+            string cacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
             if (Directory.Exists(cacheRoot))
             {
                 foreach (var dir in Directory.GetDirectories(cacheRoot))
                 {
-                    string dirName = Path.GetFileName(dir);
-                    if (dirName.StartsWith(PackageName))
+                    string name = Path.GetFileName(dir);
+                    if (name.StartsWith(PackageName))
+                    {
+                        Debug.Log($"[OutlineSystem] Found in PackageCache: {dir}");
                         return dir;
+                    }
                 }
             }
 
-            // Strategy 3: Already in Assets/
-            string assetsPath = Path.Combine(Application.dataPath, "AdvancedOutlineSystem");
-            if (Directory.Exists(assetsPath))
-                return assetsPath;
+            // Strategy 2 — Packages/ folder (local path installs)
+            string packagesFolder = Path.Combine(projectRoot, "Packages", PackageName);
+            if (Directory.Exists(packagesFolder))
+            {
+                Debug.Log($"[OutlineSystem] Found in Packages/: {packagesFolder}");
+                return packagesFolder;
+            }
+
+            // Strategy 3 — Assets/ (manual copy)
+            string assetsFolder = Path.Combine(Application.dataPath, "AdvancedOutlineSystem");
+            if (Directory.Exists(assetsFolder))
+            {
+                Debug.Log($"[OutlineSystem] Found in Assets/: {assetsFolder}");
+                return assetsFolder;
+            }
 
             return null;
         }
 
+        // ── Helpers ───────────────────────────────────────────────────────────
+
         private static void CopyDirectory(string source, string dest)
         {
             Directory.CreateDirectory(dest);
+
             foreach (var file in Directory.GetFiles(source))
             {
                 string fileName = Path.GetFileName(file);
-                // Skip .git internals and existing .meta files
-                if (fileName.EndsWith(".meta")) continue;
+                if (fileName.EndsWith(".meta")) continue; // Unity regenerates these
                 File.Copy(file, Path.Combine(dest, fileName), true);
             }
+
             foreach (var dir in Directory.GetDirectories(source))
             {
                 string dirName = Path.GetFileName(dir);
-                // Skip .git folder and tilde-suffixed folders (Samples~, Documentation~)
-                // — they are intentionally excluded from .unitypackage exports
+                // Skip .git and tilde folders (Samples~, Documentation~)
                 if (dirName == ".git" || dirName.EndsWith("~")) continue;
                 CopyDirectory(dir, Path.Combine(dest, dirName));
+            }
+        }
+
+        private static void Cleanup()
+        {
+            try
+            {
+                if (Directory.Exists(TempAssetPath))
+                    Directory.Delete(TempAssetPath, true);
+
+                string meta = TempAssetPath + ".meta";
+                if (File.Exists(meta)) File.Delete(meta);
+
+                AssetDatabase.Refresh();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[OutlineSystem] Cleanup warning: {e.Message}");
             }
         }
 
