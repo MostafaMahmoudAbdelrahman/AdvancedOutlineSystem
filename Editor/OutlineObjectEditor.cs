@@ -6,7 +6,6 @@
 
 using UnityEditor;
 using UnityEngine;
-using AdvancedOutlineSystem;
 
 namespace AdvancedOutlineSystem.Editor
 {
@@ -16,14 +15,16 @@ namespace AdvancedOutlineSystem.Editor
         private SerializedProperty _color;
         private SerializedProperty _thickness;
         private SerializedProperty _enabled;
+        private SerializedProperty _autoDetectMode;
         private SerializedProperty _mode;
 
         private void OnEnable()
         {
-            _color     = serializedObject.FindProperty("_outlineColor");
+            _color = serializedObject.FindProperty("_outlineColor");
             _thickness = serializedObject.FindProperty("_outlineThickness");
-            _enabled   = serializedObject.FindProperty("_outlineEnabled");
-            _mode      = serializedObject.FindProperty("_outlineMode");
+            _enabled = serializedObject.FindProperty("_outlineEnabled");
+            _autoDetectMode = serializedObject.FindProperty("_autoDetectMode");
+            _mode = serializedObject.FindProperty("_outlineMode");
         }
 
         public override void OnInspectorGUI()
@@ -36,10 +37,31 @@ namespace AdvancedOutlineSystem.Editor
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                EditorGUILayout.PropertyField(_enabled,   new GUIContent("Enabled"));
-                EditorGUILayout.PropertyField(_mode,      new GUIContent("Outline Mode"));
+                EditorGUILayout.PropertyField(_enabled, new GUIContent("Enabled"));
+                EditorGUILayout.Space(2);
+                EditorGUILayout.PropertyField(_autoDetectMode, new GUIContent("Auto Detect Mode", 
+                    "When enabled, the outline mode is automatically detected based on the renderer type:\n" +
+                    "• SpriteRenderer → 2D Outline\n" +
+                    "• MeshRenderer/SkinnedMeshRenderer → 3D Outline"));
+
+                if (_autoDetectMode.boolValue)
+                {
+                    // Show detected mode as read-only
+                    var outlineObject = (OutlineObject)target;
+                    GUI.enabled = false;
+                    EditorGUILayout.PropertyField(_mode, new GUIContent("Detected Mode"));
+                    GUI.enabled = true;
+
+                    // Show detected renderer type
+                    EditorGUILayout.LabelField("Renderer Type", GetRendererTypeDescription(outlineObject));
+                }
+                else
+                {
+                    EditorGUILayout.PropertyField(_mode, new GUIContent("Outline Mode"));
+                }
+
                 EditorGUILayout.Space(4);
-                EditorGUILayout.PropertyField(_color,     new GUIContent("Color"));
+                EditorGUILayout.PropertyField(_color, new GUIContent("Color"));
                 EditorGUILayout.Slider(_thickness, 0f, 20f, new GUIContent("Thickness"));
             }
 
@@ -53,15 +75,22 @@ namespace AdvancedOutlineSystem.Editor
         {
             var style = new GUIStyle(EditorStyles.boldLabel)
             {
-                fontSize  = 13,
+                fontSize = 13,
                 alignment = TextAnchor.MiddleCenter
             };
             EditorGUILayout.LabelField("Advanced Outline System", style);
             var rect = GUILayoutUtility.GetLastRect();
-            rect.y      += EditorGUIUtility.singleLineHeight + 2;
-            rect.height  = 1;
+            rect.y += EditorGUIUtility.singleLineHeight + 2;
+            rect.height = 1;
             EditorGUI.DrawRect(rect, new Color(0.4f, 0.4f, 0.4f));
             GUILayout.Space(4);
+        }
+
+        private string GetRendererTypeDescription(OutlineObject outlineObject)
+        {
+            if (outlineObject.IsSpriteRenderer) return "2D Sprite (SpriteRenderer)";
+            if (outlineObject.IsMeshRenderer) return "3D Mesh (MeshRenderer/SkinnedMeshRenderer)";
+            return "Unknown Renderer";
         }
 
         private void DrawHelpBox()
@@ -71,19 +100,31 @@ namespace AdvancedOutlineSystem.Editor
             {
                 case OutlineMode.Outline3D:
                     EditorGUILayout.HelpBox(
-                        "3D Outline: Inverted-hull technique. Works on MeshRenderer and SkinnedMeshRenderer.",
+                        "3D Outline: Inverted-hull technique. Works on MeshRenderer and SkinnedMeshRenderer. " +
+                        "Expands mesh vertices along normals to create the outline effect.",
                         MessageType.Info);
                     break;
                 case OutlineMode.ScreenSpace:
                     EditorGUILayout.HelpBox(
-                        "Screen-Space Outline: Depth + normal edge detection. Applies globally to the camera.",
+                        "Screen-Space Outline: Depth + normal edge detection. Applies globally to the camera. " +
+                        "Note: All objects with this mode share the same color and thickness.",
                         MessageType.Info);
                     break;
                 case OutlineMode.Outline2D:
                     EditorGUILayout.HelpBox(
-                        "2D Outline: Alpha-based edge detection for SpriteRenderer.",
+                        "2D Outline: Alpha-based edge detection for SpriteRenderer. " +
+                        "Detects edges by comparing pixel alpha values with neighbors.",
                         MessageType.Info);
                     break;
+            }
+
+            // Multi-material warning
+            var renderer = obj.CachedRenderer;
+            if (renderer is MeshRenderer mr && mr.sharedMaterials != null && mr.sharedMaterials.Length > 1)
+            {
+                EditorGUILayout.HelpBox(
+                    "This MeshRenderer has multiple materials. The outline will be applied to all sub-meshes.",
+                    MessageType.Warning);
             }
         }
     }

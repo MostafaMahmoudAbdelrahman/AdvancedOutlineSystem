@@ -12,7 +12,9 @@ namespace AdvancedOutlineSystem
     /// <summary>
     /// Singleton manager that tracks all active OutlineObjects and
     /// provides batched data to the render feature.
+    /// Can be created automatically when an OutlineObject is enabled.
     /// </summary>
+    [DisallowMultipleComponent]
     public class OutlineManager : MonoBehaviour
     {
         private static OutlineManager _instance;
@@ -25,6 +27,29 @@ namespace AdvancedOutlineSystem
         public IReadOnlyList<OutlineObject> Objects3D     => _objects3D;
         public IReadOnlyList<OutlineObject> ObjectsScreen => _objectsScreen;
         public IReadOnlyList<OutlineObject> Objects2D     => _objects2D;
+
+        /// <summary>
+        /// Gets or creates an OutlineManager instance.
+        /// Use this to ensure the manager exists before registering objects.
+        /// </summary>
+        public static OutlineManager GetOrCreateInstance()
+        {
+            if (_instance != null) return _instance;
+
+            // Try to find existing manager in scene
+            var managerObject = FindObjectOfType<OutlineManager>();
+            if (managerObject != null)
+            {
+                return managerObject;
+            }
+
+            // Create new manager
+            var go = new GameObject("OutlineManager");
+            _instance = go.AddComponent<OutlineManager>();
+            DontDestroyOnLoad(go);
+            Debug.Log("[OutlineSystem] OutlineManager created automatically.");
+            return _instance;
+        }
 
         private void Awake()
         {

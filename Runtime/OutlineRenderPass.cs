@@ -15,6 +15,7 @@ namespace AdvancedOutlineSystem
     /// Expands vertices along normals, renders back-faces only.
     /// Uses MaterialPropertyBlock — zero per-frame allocations.
     /// Works in URP with Compatibility Mode enabled.
+    /// Supports multiple materials on a single MeshRenderer.
     /// </summary>
     public class OutlineRenderPass : ScriptableRenderPass, System.IDisposable
     {
@@ -59,7 +60,7 @@ namespace AdvancedOutlineSystem
             {
                 if (obj == null || !obj.OutlineEnabled) continue;
 
-                // MeshRenderer
+                // MeshRenderer - handles multiple materials
                 var mr = obj.GetComponent<MeshRenderer>();
                 var mf = obj.GetComponent<MeshFilter>();
                 if (mr != null && mf != null && mf.sharedMesh != null)
@@ -67,20 +68,30 @@ namespace AdvancedOutlineSystem
                     mr.GetPropertyBlock(_mpb);
                     _mpb.SetColor(ColorProp, obj.OutlineColor);
                     _mpb.SetFloat(ThicknessProp, obj.OutlineThickness);
-                    for (int i = 0; i < mf.sharedMesh.subMeshCount; i++)
-                        cmd.DrawRenderer(mr, mat, i, 0);
+                    
+                    // Draw all sub-meshes (handles multiple materials)
+                    var mesh = mf.sharedMesh;
+                    for (int subMesh = 0; subMesh < mesh.subMeshCount; subMesh++)
+                    {
+                        cmd.DrawRenderer(mr, mat, subMesh, 0);
+                    }
                     continue;
                 }
 
-                // SkinnedMeshRenderer
+                // SkinnedMeshRenderer - also handles multiple sub-meshes
                 var smr = obj.GetComponent<SkinnedMeshRenderer>();
                 if (smr != null && smr.sharedMesh != null)
                 {
                     smr.GetPropertyBlock(_mpb);
                     _mpb.SetColor(ColorProp, obj.OutlineColor);
                     _mpb.SetFloat(ThicknessProp, obj.OutlineThickness);
-                    for (int i = 0; i < smr.sharedMesh.subMeshCount; i++)
-                        cmd.DrawRenderer(smr, mat, i, 0);
+                    
+                    // Draw all sub-meshes
+                    var mesh = smr.sharedMesh;
+                    for (int subMesh = 0; subMesh < mesh.subMeshCount; subMesh++)
+                    {
+                        cmd.DrawRenderer(smr, mat, subMesh, 0);
+                    }
                 }
             }
 

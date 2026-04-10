@@ -5,19 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.0.7] — 2026-04-10
+## [1.0.8] — 2026-04-10
 
 ### Added
-- `OutlineWelcomeWindow` — auto-opens on first import, shows quick-start guide, links to docs and GitHub
-- `OutlineDocumentationWindow` — full in-editor documentation browser with tabs: How To Use, Setup Guide, API Reference, Troubleshooting
-- `OutlineValidator` — standalone validation utility callable from Welcome Window, Docs Window, and Tools menu
-
-### Removed
-- `OutlinePackageExporter` — removed export script (package distributed via GitHub releases and Git URL only)
+- **Auto-detection of outline mode**: `OutlineObject` now automatically detects whether to use 2D or 3D outline based on the renderer type (SpriteRenderer → 2D, MeshRenderer/SkinnedMeshRenderer → 3D)
+- **Auto-creation of OutlineManager**: No longer need to manually add OutlineManager to scene — it's created automatically when the first OutlineObject is enabled
+- **Multi-material support**: OutlineRenderPass now properly handles MeshRenderers with multiple materials/sub-meshes
+- **Enhanced Editor**: Custom inspector now shows detected renderer type and auto-detect mode toggle
+- **Improved validation**: OutlineSystemValidator now checks for OutlineRenderFeature in URP Renderer
 
 ### Changed
-- All Tools menu items consolidated: Welcome, Documentation, Validate Setup
-- Documentation~/README.md fully rewritten with feature table, Unity 6 note, runtime usage examples
+- `OutlineObject` now has `[RequireComponent(typeof(Renderer))]` attribute to ensure proper setup
+- Added `AutoDetectMode` property to allow manual override when needed
+- Updated `.gitignore` to allow `.unitypackage` files to be tracked in RELEASES folder
+
+### Fixed
+- Outline not working when OutlineManager was missing from scene
+- Manual mode selection being overridden — now shows warning when AutoDetectMode is enabled
+- Multiple materials on single MeshRenderer not being outlined correctly
 
 ---
 
