@@ -131,8 +131,8 @@ namespace AdvancedOutlineSystem.Editor
             if (!Application.isPlaying)
             {
                 EditorGUILayout.HelpBox(
-                    "Outlines are only visible during Play mode. Enter Play mode to see the outline effect.",
-                    MessageType.Warning);
+                    "Outline preview is visible in Scene View. Changes to color and thickness update in real-time.",
+                    MessageType.Info);
             }
         }
     }
