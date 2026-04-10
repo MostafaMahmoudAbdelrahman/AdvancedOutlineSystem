@@ -126,6 +126,14 @@ namespace AdvancedOutlineSystem.Editor
                     "This MeshRenderer has multiple materials. The outline will be applied to all sub-meshes.",
                     MessageType.Warning);
             }
+
+            // Editor preview notice
+            if (!Application.isPlaying)
+            {
+                EditorGUILayout.HelpBox(
+                    "Outlines are only visible during Play mode. Enter Play mode to see the outline effect.",
+                    MessageType.Warning);
+            }
         }
     }
 }
