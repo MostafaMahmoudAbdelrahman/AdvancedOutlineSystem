@@ -209,7 +209,6 @@ namespace AdvancedOutlineSystem.Editor
         /// <summary>
         /// Toggle debug logging on/off
         /// </summary>
-        [MenuItem("Tools/Advanced Outline System/Debug/Toggle Debug Logs")]
         public static void ToggleDebug()
         {
             _debugEnabled = !_debugEnabled;
@@ -220,8 +219,7 @@ namespace AdvancedOutlineSystem.Editor
         /// <summary>
         /// Force refresh the scene view outlines
         /// </summary>
-        [MenuItem("Tools/Advanced Outline System/Debug/Force Refresh")]
-        public static void ForceRefresh()
+        public static void ForceRefreshScene()
         {
             _lastFrameCount = -1;
             _outlineMaterial = null;
